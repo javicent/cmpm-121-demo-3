@@ -4,10 +4,9 @@ import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
 
-
 const MERRILL_CLASSROOM = leaflet.latLng({
     lat: 36.9995,
-    lng: - 122.0533
+    lng: -122.0533
 });
 
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -39,7 +38,10 @@ let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No points yet...";
 
-function makePit(i: number, j: number) {
+// Store cache data in an array
+const caches = [];
+
+function makePit(i, j) {
     const bounds = leaflet.latLngBounds([
         [MERRILL_CLASSROOM.lat + i * TILE_DEGREES,
         MERRILL_CLASSROOM.lng + j * TILE_DEGREES],
@@ -47,30 +49,55 @@ function makePit(i: number, j: number) {
         MERRILL_CLASSROOM.lng + (j + 1) * TILE_DEGREES],
     ]);
 
+    // Generate deterministically random coin value
+    const coinValue = Math.floor(luck([i, j, "coinValue"].toString()) * 100);
+
+    // Create a cache object
+    const cache = {
+        location: [i, j],
+        coins: coinValue
+    };
+
+    // Add a cache to the map with a popup
     const pit = leaflet.rectangle(bounds) as leaflet.Layer;
-
-
-
     pit.bindPopup(() => {
-        let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
         const container = document.createElement("div");
         container.innerHTML = `
-                <div>There is a pit here at "${i},${j}". It has value <span id="value">${value}</span>.</div>
-                <button id="poke">poke</button>`;
-        const poke = container.querySelector<HTMLButtonElement>("#poke")!;
-        poke.addEventListener("click", () => {
-            value--;
-            container.querySelector<HTMLSpanElement>("#value")!.innerHTML = value.toString();
-            points++;
-            statusPanel.innerHTML = `${points} points accumulated`;
+            <div>Cache at "${i},${j}"</div>
+            <div>Coins: <span id="coinValue">${coinValue}</span></div>
+            <button id="collect">Collect Coins</button>
+            <button id="deposit">Deposit Coins</button>`;
+        const collectButton = container.querySelector<HTMLButtonElement>("#collect")!;
+        const depositButton = container.querySelector<HTMLButtonElement>("#deposit")!;
+        const coinValueDisplay = container.querySelector<HTMLSpanElement>("#coinValue")!;
+
+        collectButton.addEventListener("click", () => {
+            if (cache.coins > 0) {
+                cache.coins--;
+                points++;
+                coinValueDisplay.textContent = cache.coins.toString();
+                statusPanel.innerHTML = `${points} points accumulated`;
+            }
         });
+
+        depositButton.addEventListener("click", () => {
+            if (points > 0) {
+                points--;
+                cache.coins++;
+                coinValueDisplay.textContent = cache.coins.toString();
+                statusPanel.innerHTML = `${points} points accumulated`;
+            }
+        });
+
         return container;
     });
+
+    caches.push(cache);
     pit.addTo(map);
 }
 
 for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-    for (let j = - NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
+    for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
         if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
             makePit(i, j);
         }
