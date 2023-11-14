@@ -41,7 +41,7 @@ statusPanel.innerHTML = "No points yet...";
 // Store cache data in an array
 const caches = [];
 
-function makePit(i, j) {
+function makePit(i: number, j: number): void {
     const bounds = leaflet.latLngBounds([
         [MERRILL_CLASSROOM.lat + i * TILE_DEGREES,
         MERRILL_CLASSROOM.lng + j * TILE_DEGREES],
